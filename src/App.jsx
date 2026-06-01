@@ -265,7 +265,7 @@ function Navbar({ activePage, setActivePage, lang, setLang }) {
         {/* Logo */}
         <div onClick={() => setActivePage("home")} style={{ cursor: "pointer" }}>
           <div style={{ fontFamily: "'Playfair Display', serif", fontSize: "1.4rem", fontWeight: 600, color: COLORS.charcoal, letterSpacing: "-0.01em", lineHeight: 1 }}>
-            Tailoring <span style={{ color: COLORS.roseGold, fontStyle: "italic" }}>Studio</span>
+            Lakshmi's <span style={{ color: COLORS.roseGold, fontStyle: "italic" }}>Boutique</span>
           </div>
           <div style={{ fontFamily: "'Raleway', sans-serif", fontSize: "0.6rem", letterSpacing: "0.3em", textTransform: "uppercase", color: COLORS.charcoalLight, marginTop: 2 }}>Est. 2009 · Hyderabad</div>
         </div>
