@@ -258,8 +258,10 @@ function Navbar({ activePage, setActivePage, lang, setLang }) {
     { id: "contact", label: t.contact },
   ];
 
+  // Determine if navbar is over a dark header (hero/about) so controls stay visible
+  const isDarkHeader = !scrolled && (activePage === "home" || activePage === "about");
   // Determine icon color so hamburger is visible on dark hero/about backgrounds
-  const iconColor = scrolled ? COLORS.charcoal : (["home", "about"].includes(activePage) ? "white" : COLORS.charcoal);
+  const iconColor = scrolled ? COLORS.charcoal : (isDarkHeader ? "white" : COLORS.charcoal);
 
   return (
     <nav style={{
@@ -286,17 +288,17 @@ function Navbar({ activePage, setActivePage, lang, setLang }) {
               background: "none", border: "none", cursor: "pointer",
               fontFamily: "'Raleway', sans-serif", fontSize: "0.75rem", fontWeight: 500,
               letterSpacing: "0.12em", textTransform: "uppercase",
-              color: activePage === link.id ? COLORS.roseGold : COLORS.charcoal,
+              color: activePage === link.id ? COLORS.roseGold : (isDarkHeader ? "rgba(255,255,255,0.95)" : COLORS.charcoal),
               borderBottom: activePage === link.id ? `1px solid ${COLORS.roseGold}` : "1px solid transparent",
               paddingBottom: 2, transition: "all 0.2s",
             }}>{link.label}</button>
           ))}
           {/* Language Toggle */}
-          <div style={{ display: "flex", gap: 4, border: `1px solid ${COLORS.ivoryDark}`, padding: "4px 8px", background: "white" }}>
+          <div style={{ display: "flex", gap: 4, border: `1px solid ${COLORS.ivoryDark}`, padding: "4px 8px", background: isDarkHeader ? "rgba(255,255,255,0.06)" : "white" }}>
             {["en","te","hi"].map(l => (
               <button key={l} onClick={() => setLang(l)} style={{
                 background: lang === l ? COLORS.roseGold : "transparent",
-                color: lang === l ? "white" : COLORS.charcoalLight,
+                color: lang === l ? "white" : (isDarkHeader ? "rgba(255,255,255,0.9)" : COLORS.charcoalLight),
                 border: "none", cursor: "pointer", padding: "2px 8px",
                 fontFamily: "'Raleway', sans-serif", fontSize: "0.65rem", fontWeight: 600,
                 letterSpacing: "0.1em", textTransform: "uppercase", transition: "all 0.2s",
@@ -306,7 +308,7 @@ function Navbar({ activePage, setActivePage, lang, setLang }) {
           <button className="btn-primary" style={{ padding: "10px 20px", fontSize: "0.7rem" }} onClick={() => setActivePage("booking")}>
             {t.book}
           </button>
-          <button onClick={() => setActivePage("dashboard")} style={{ background: "none", border: "none", cursor: "pointer", color: COLORS.charcoal }}>
+          <button onClick={() => setActivePage("dashboard")} style={{ background: "none", border: "none", cursor: "pointer", color: isDarkHeader ? "white" : COLORS.charcoal }}>
             <Icon name="user" size={18} />
           </button>
         </div>
