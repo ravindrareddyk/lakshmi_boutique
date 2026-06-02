@@ -1,4 +1,11 @@
 import { useState, useEffect, useRef } from "react";
+import {
+  authenticate,
+  clearSession,
+  getSession,
+  pageRequiresRole,
+  DEMO_ACCOUNTS,
+} from "./auth.js";
 
 // ============================================================
 // DESIGN SYSTEM — Luxury Atelier Aesthetic
@@ -233,15 +240,21 @@ const Icon = ({ name, size = 20, color = "currentColor" }) => {
 // ============================================================
 // NAVIGATION
 // ============================================================
-function Navbar({ activePage, setActivePage, lang, setLang }) {
+function Navbar({ activePage, setActivePage, lang, setLang, session, onLogout, openLogin }) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const t = {
-    en: { home: "Home", services: "Services", portfolio: "Portfolio", about: "About", blog: "Blog", contact: "Contact", book: "Book Appointment" },
-    te: { home: "హోమ్", services: "సేవలు", portfolio: "పోర్ట్‌ఫోలియో", about: "గురించి", blog: "బ్లాగ్", contact: "సంప్రదించండి", book: "అపాయింట్‌మెంట్" },
-    hi: { home: "होम", services: "सेवाएं", portfolio: "पोर्टफोलियो", about: "हमारे बारे में", blog: "ब्लॉग", contact: "संपर्क", book: "अपॉइंटमेंट" },
+    en: { home: "Home", services: "Services", portfolio: "Portfolio", about: "About", blog: "Blog", contact: "Contact", book: "Book Appointment", login: "Sign In", logout: "Sign Out", account: "My Account", admin: "Admin" },
+    te: { home: "హోమ్", services: "సేవలు", portfolio: "పోర్ట్‌ఫోలియో", about: "గురించి", blog: "బ్లాగ్", contact: "సంప్రదించండి", book: "అపాయింట్‌మెంట్", login: "సైన్ ఇన్", logout: "సైన్ అవుట్", account: "నా ఖాతా", admin: "అడ్మిన్" },
+    hi: { home: "होम", services: "सेवाएं", portfolio: "पोर्टफोलियो", about: "हमारे बारे में", blog: "ब्लॉग", contact: "संपर्क", book: "अपॉइंटमेंट", login: "साइन इन", logout: "साइन आउट", account: "मेरा खाता", admin: "एडमिन" },
   }[lang];
+
+  const handleAccountClick = () => {
+    if (session?.role === "customer") setActivePage("dashboard");
+    else if (session?.role === "admin") setActivePage("admin");
+    else openLogin("customer");
+  };
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -308,9 +321,21 @@ function Navbar({ activePage, setActivePage, lang, setLang }) {
           <button className="btn-primary" style={{ padding: "10px 20px", fontSize: "0.7rem" }} onClick={() => setActivePage("booking")}>
             {t.book}
           </button>
-          <button onClick={() => setActivePage("dashboard")} style={{ background: "none", border: "none", cursor: "pointer", color: isDarkHeader ? "white" : COLORS.charcoal }}>
-            <Icon name="user" size={18} />
-          </button>
+          {session ? (
+            <>
+              <button onClick={handleAccountClick} title={session.name} style={{ background: "none", border: "none", cursor: "pointer", color: isDarkHeader ? "white" : COLORS.charcoal, display: "flex", alignItems: "center", gap: 6 }}>
+                <Icon name="user" size={18} />
+                <span style={{ fontFamily: "'Raleway', sans-serif", fontSize: "0.65rem", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", maxWidth: 90, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{session.name.split(" ")[0]}</span>
+              </button>
+              <button onClick={onLogout} title={t.logout} style={{ background: "none", border: "none", cursor: "pointer", color: isDarkHeader ? "rgba(255,255,255,0.75)" : COLORS.charcoalLight }}>
+                <Icon name="logout" size={18} />
+              </button>
+            </>
+          ) : (
+            <button className="btn-outline" style={{ padding: "8px 14px", fontSize: "0.65rem", color: isDarkHeader ? "white" : undefined, borderColor: isDarkHeader ? "rgba(255,255,255,0.5)" : undefined }} onClick={() => openLogin("customer")}>
+              {t.login}
+            </button>
+          )}
         </div>
 
         {/* Mobile hamburger */}
@@ -336,6 +361,20 @@ function Navbar({ activePage, setActivePage, lang, setLang }) {
           <button className="btn-primary" style={{ marginTop: 16, width: "100%" }} onClick={() => { setActivePage("booking"); setMobileOpen(false); }}>
             {t.book}
           </button>
+          {session ? (
+            <>
+              <button onClick={() => { handleAccountClick(); setMobileOpen(false); }} style={{ display: "block", width: "100%", marginTop: 12, background: "none", border: `1px solid ${COLORS.ivoryDark}`, cursor: "pointer", fontFamily: "'Raleway', sans-serif", fontSize: "0.75rem", fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", padding: "12px", color: COLORS.charcoal }}>
+                {session.role === "admin" ? t.admin : t.account}
+              </button>
+              <button onClick={() => { onLogout(); setMobileOpen(false); }} style={{ display: "block", width: "100%", marginTop: 8, background: COLORS.charcoal, border: "none", cursor: "pointer", fontFamily: "'Raleway', sans-serif", fontSize: "0.75rem", fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", padding: "12px", color: "white" }}>
+                {t.logout}
+              </button>
+            </>
+          ) : (
+            <button className="btn-outline" style={{ marginTop: 12, width: "100%" }} onClick={() => { openLogin("customer"); setMobileOpen(false); }}>
+              {t.login}
+            </button>
+          )}
         </div>
       )}
     </nav>
@@ -598,17 +637,16 @@ function PortfolioSection() {
 
   const filters = ["All", "Blouses", "Bridal", "Kurtis", "Lehengas", "Churidars"];
 
-  // Synthetic portfolio items with gradient placeholders
+  // Portfolio items (Unsplash images)
   const items = [
-    { cat: "Bridal", title: "Royal Zardosi Blouse", color: ["#E8C5B8", "#C8956C"], height: 320 },
-    { cat: "Blouses", title: "Kantha Embroidered", color: ["#C9D4C5", "#8BA888"], height: 260 },
-    { cat: "Lehengas", title: "Bridal Lehenga Set", color: ["#D4A8C7", "#A06090"], height: 380 },
-    { cat: "Kurtis", title: "Anarkali Kurti", color: ["#C8D4E8", "#6080A0"], height: 300 },
-    { cat: "Bridal", title: "Temple Jewel Blouse", color: ["#E8D8C0", "#C09060"], height: 270 },
-    { cat: "Churidars", title: "Silk Churidar Set", color: ["#D8C8E8", "#8060A8"], height: 350 },
-    { cat: "Blouses", title: "Mirror Work Blouse", color: ["#E0D0C8", "#A08070"], height: 290 },
-    { cat: "Bridal", title: "Banarasi Bridal Set", color: ["#E8C8B0", "#B88060"], height: 340 },
-    { cat: "Kurtis", title: "Designer Cotton Kurti", color: ["#C8E0D0", "#60A080"], height: 260 },
+    { cat: "Lehengas", title: "Bridal Lehenga Set", img: "https://images.unsplash.com/photo-1762201698238-bf412e297016?auto=format&fit=crop&w=1200&q=80", color: ["#E8C5B8", "#C8956C"], height: 380 },
+    { cat: "Bridal", title: "Indian Bridal Attire", img: "https://images.unsplash.com/photo-1742891602982-caf5453be5f7?auto=format&fit=crop&w=1200&q=80", color: ["#E8D8C0", "#C09060"], height: 320 },
+    { cat: "Bridal", title: "Wedding Saree Look", img: "https://images.unsplash.com/photo-1756376756461-7150fc562787?auto=format&fit=crop&w=1200&q=80", color: ["#E8C8B0", "#B88060"], height: 340 },
+    { cat: "Kurtis", title: "Floral Kurta Set", img: "https://images.unsplash.com/photo-1742800764280-d51117b7eb0a?auto=format&fit=crop&w=1200&q=80", color: ["#C8D4E8", "#6080A0"], height: 300 },
+    { cat: "Kurtis", title: "Indigo Tunic Co-Ord", img: "https://images.unsplash.com/photo-1765958317175-230c29d4865a?auto=format&fit=crop&w=1200&q=80", color: ["#C8E0D0", "#60A080"], height: 260 },
+    { cat: "Blouses", title: "Embroidered Blouse", img: "https://images.unsplash.com/photo-1762432876338-028b9b0d67dc?auto=format&fit=crop&w=1200&q=80", color: ["#E0D0C8", "#A08070"], height: 290 },
+    { cat: "Blouses", title: "Hand-Embroidered Blouse", img: "https://images.unsplash.com/flagged/photo-1564362397452-8aa08548c3ee?auto=format&fit=crop&w=1200&q=80", color: ["#C9D4C5", "#8BA888"], height: 260 },
+    { cat: "Churidars", title: "Artisan Embroidery Work", img: "https://images.unsplash.com/photo-1775471234117-adff84750dd0?auto=format&fit=crop&w=1200&q=80", color: ["#D8C8E8", "#8060A8"], height: 350 },
   ];
 
   const filtered = activeFilter === "All" ? items : items.filter(i => i.cat === activeFilter);
@@ -642,15 +680,28 @@ function PortfolioSection() {
               breakInside: "avoid", marginBottom: 20, cursor: "zoom-in", position: "relative",
               overflow: "hidden", animation: `fadeIn 0.4s ease ${i * 0.05}s both`,
             }}>
-              <div style={{ height: item.height, background: `linear-gradient(135deg, ${item.color[0]}, ${item.color[1]})`, position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                {/* Stylized fabric pattern */}
-                <div style={{ position: "absolute", inset: 0, backgroundImage: `repeating-linear-gradient(60deg, transparent, transparent 20px, rgba(255,255,255,0.05) 20px, rgba(255,255,255,0.05) 21px)` }} />
-                <div style={{ textAlign: "center", position: "relative", zIndex: 1 }}>
-                  <div style={{ fontSize: "3rem", marginBottom: 8, filter: "drop-shadow(0 4px 8px rgba(0,0,0,0.2))" }}>
-                    {i % 3 === 0 ? "👘" : i % 3 === 1 ? "✂️" : "🌸"}
-                  </div>
-                  <div style={{ fontFamily: "'Playfair Display', serif", fontSize: "0.9rem", color: "rgba(0,0,0,0.5)", fontStyle: "italic" }}>{item.title}</div>
-                </div>
+              <div style={{ height: item.height, background: `linear-gradient(135deg, ${item.color[0]}, ${item.color[1]})`, position: "relative" }}>
+                {item.img ? (
+                  <img
+                    src={item.img}
+                    alt={item.title}
+                    loading="lazy"
+                    style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+                  />
+                ) : (
+                  <>
+                    {/* Stylized fabric pattern fallback */}
+                    <div style={{ position: "absolute", inset: 0, backgroundImage: `repeating-linear-gradient(60deg, transparent, transparent 20px, rgba(255,255,255,0.05) 20px, rgba(255,255,255,0.05) 21px)` }} />
+                    <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <div style={{ textAlign: "center" }}>
+                        <div style={{ fontSize: "3rem", marginBottom: 8, filter: "drop-shadow(0 4px 8px rgba(0,0,0,0.2))" }}>
+                          {i % 3 === 0 ? "👘" : i % 3 === 1 ? "✂️" : "🌸"}
+                        </div>
+                        <div style={{ fontFamily: "'Playfair Display', serif", fontSize: "0.9rem", color: "rgba(0,0,0,0.5)", fontStyle: "italic" }}>{item.title}</div>
+                      </div>
+                    </div>
+                  </>
+                )}
                 {/* Hover overlay */}
                 <div style={{ position: "absolute", inset: 0, background: "rgba(44,36,32,0.7)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", opacity: 0, transition: "opacity 0.3s" }}
                   onMouseEnter={e => e.currentTarget.style.opacity = 1}
@@ -672,10 +723,20 @@ function PortfolioSection() {
       {/* Lightbox */}
       {lightboxImg && (
         <div onClick={() => setLightboxImg(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.92)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", cursor: "zoom-out" }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: `linear-gradient(135deg, ${lightboxImg.color[0]}, ${lightboxImg.color[1]})`, width: "min(500px, 90vw)", height: 500, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative" }}>
-            <div style={{ fontSize: "5rem", marginBottom: 16 }}>🌸</div>
-            <div style={{ fontFamily: "'Playfair Display', serif", fontSize: "1.5rem", color: "rgba(0,0,0,0.6)", fontStyle: "italic" }}>{lightboxImg.title}</div>
-            <div className="tag" style={{ marginTop: 12 }}>{lightboxImg.cat}</div>
+          <div onClick={e => e.stopPropagation()} style={{ width: "min(720px, 92vw)", background: "white", border: `1px solid rgba(255,255,255,0.08)`, position: "relative" }}>
+            <div style={{ background: `linear-gradient(135deg, ${lightboxImg.color[0]}, ${lightboxImg.color[1]})`, height: "min(520px, 70vh)", position: "relative" }}>
+              {lightboxImg.img && (
+                <img
+                  src={lightboxImg.img}
+                  alt={lightboxImg.title}
+                  style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+                />
+              )}
+            </div>
+            <div style={{ padding: "18px 20px" }}>
+              <div style={{ fontFamily: "'Playfair Display', serif", fontSize: "1.2rem", color: COLORS.charcoal, fontWeight: 500 }}>{lightboxImg.title}</div>
+              <div className="tag" style={{ marginTop: 10 }}>{lightboxImg.cat}</div>
+            </div>
             <button onClick={() => setLightboxImg(null)} style={{ position: "absolute", top: 16, right: 16, background: "rgba(0,0,0,0.3)", border: "none", color: "white", cursor: "pointer", width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center" }}>
               <Icon name="x" size={18} color="white" />
             </button>
@@ -1116,8 +1177,9 @@ function OrderTracking() {
 // ============================================================
 // CUSTOMER DASHBOARD
 // ============================================================
-function CustomerDashboard({ setActivePage }) {
+function CustomerDashboard({ setActivePage, user }) {
   const [activeTab, setActiveTab] = useState("overview");
+  const displayName = user?.name || "Guest";
 
   const orders = [
     { id: "TS-A8F2C1", service: "Bridal Blouse", date: "22 May 2026", status: "In Progress", amount: "₹4,500" },
@@ -1133,8 +1195,8 @@ function CustomerDashboard({ setActivePage }) {
         <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
             <div style={{ fontFamily: "'Raleway', sans-serif", fontSize: "0.7rem", letterSpacing: "0.2em", textTransform: "uppercase", color: COLORS.roseGoldLight, marginBottom: 8 }}>Welcome back</div>
-            <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: "2rem", fontWeight: 500, color: "white" }}>Ananya Reddy</h1>
-            <div style={{ fontFamily: "'Cormorant Garamond', serif", color: "rgba(255,255,255,0.55)", marginTop: 4 }}>Customer since January 2023 · 5 Orders</div>
+            <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: "2rem", fontWeight: 500, color: "white" }}>{displayName}</h1>
+            <div style={{ fontFamily: "'Cormorant Garamond', serif", color: "rgba(255,255,255,0.55)", marginTop: 4 }}>{user?.email} · Customer since January 2023 · 5 Orders</div>
           </div>
           <button className="btn-primary" onClick={() => setActivePage("booking")}>New Order <Icon name="plus" size={16} /></button>
         </div>
@@ -1255,7 +1317,7 @@ function CustomerDashboard({ setActivePage }) {
 // ============================================================
 // ADMIN DASHBOARD
 // ============================================================
-function AdminDashboard() {
+function AdminDashboard({ user, onLogout }) {
   const [tab, setTab] = useState("overview");
 
   const orders = [
@@ -1287,9 +1349,10 @@ function AdminDashboard() {
               <Icon name="bell" size={20} color="rgba(255,255,255,0.7)" />
               <div style={{ position: "absolute", top: -4, right: -4, width: 16, height: 16, background: COLORS.roseGold, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.6rem", color: "white", fontWeight: 700 }}>3</div>
             </div>
-            <div style={{ width: 36, height: 36, background: COLORS.roseGold, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <span style={{ fontFamily: "'Playfair Display', serif", fontWeight: 600, color: "white", fontSize: "0.9rem" }}>M</span>
-            </div>
+            <div style={{ fontFamily: "'Raleway', sans-serif", fontSize: "0.7rem", color: "rgba(255,255,255,0.7)", letterSpacing: "0.05em" }}>{user?.name}</div>
+            <button onClick={onLogout} title="Sign out" style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", cursor: "pointer", padding: "8px 12px", display: "flex", alignItems: "center", gap: 6, color: "white", fontFamily: "'Raleway', sans-serif", fontSize: "0.65rem", fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase" }}>
+              <Icon name="logout" size={16} color="white" /> Sign Out
+            </button>
           </div>
         </div>
       </div>
@@ -1700,11 +1763,142 @@ function WhatsAppFloat() {
 }
 
 // ============================================================
+// LOGIN PAGE
+// ============================================================
+function LoginPage({ loginRole, setLoginRole, onLogin, setActivePage }) {
+  const [role, setRole] = useState(loginRole || "customer");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    setRole(loginRole || "customer");
+    setError("");
+  }, [loginRole]);
+
+  const switchRole = (nextRole) => {
+    setRole(nextRole);
+    setLoginRole(nextRole);
+    setError("");
+    setEmail("");
+    setPassword("");
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const result = authenticate(email, password, role);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    onLogin(result.session);
+    setActivePage(role === "admin" ? "admin" : "dashboard");
+  };
+
+  const demo = DEMO_ACCOUNTS[role];
+
+  return (
+    <div style={{ minHeight: "100vh", background: COLORS.ivory, padding: "100px 32px 60px" }}>
+      <div style={{ maxWidth: 440, margin: "0 auto" }}>
+        <div style={{ textAlign: "center", marginBottom: 36 }}>
+          <div className="section-subtitle" style={{ marginBottom: 12 }}>Secure Access</div>
+          <h1 className="section-title">Sign In</h1>
+          <div style={{ width: 60, height: 1, background: COLORS.roseGold, margin: "16px auto 0" }} />
+        </div>
+
+        <div style={{ display: "flex", marginBottom: 28, border: `1px solid ${COLORS.ivoryDark}`, background: "white" }}>
+          {["customer", "admin"].map((r) => (
+            <button key={r} type="button" onClick={() => switchRole(r)} style={{
+              flex: 1, padding: "14px", border: "none", cursor: "pointer",
+              fontFamily: "'Raleway', sans-serif", fontSize: "0.7rem", fontWeight: 600,
+              letterSpacing: "0.12em", textTransform: "uppercase",
+              background: role === r ? COLORS.roseGold : "transparent",
+              color: role === r ? "white" : COLORS.charcoalLight,
+              transition: "all 0.2s",
+            }}>
+              {r === "customer" ? "Customer" : "Admin"}
+            </button>
+          ))}
+        </div>
+
+        <form onSubmit={handleSubmit} style={{ background: "white", border: `1px solid ${COLORS.ivoryDark}`, padding: "36px 32px" }}>
+          <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1rem", color: COLORS.charcoalLight, lineHeight: 1.7, marginBottom: 24 }}>
+            {role === "customer"
+              ? "Access your orders, measurements, and appointments."
+              : "Manage orders, appointments, and boutique settings."}
+          </p>
+
+          <div style={{ marginBottom: 20 }}>
+            <label>Email</label>
+            <input type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={demo.email} required />
+          </div>
+          <div style={{ marginBottom: 20 }}>
+            <label>Password</label>
+            <input type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required />
+          </div>
+
+          {error && (
+            <div style={{ background: "#FEE2E2", color: "#991B1B", padding: "12px 16px", marginBottom: 20, fontFamily: "'Raleway', sans-serif", fontSize: "0.8rem" }}>
+              {error}
+            </div>
+          )}
+
+          <button type="submit" className="btn-primary" style={{ width: "100%", justifyContent: "center" }}>
+            Sign In <Icon name="arrow" size={16} />
+          </button>
+
+          <div style={{ marginTop: 24, padding: "16px", background: COLORS.blush, border: `1px solid ${COLORS.blushDeep}` }}>
+            <div style={{ fontFamily: "'Raleway', sans-serif", fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: COLORS.roseGoldDark, marginBottom: 8 }}>Demo credentials</div>
+            <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "0.95rem", color: COLORS.charcoal, lineHeight: 1.6 }}>
+              <div>{demo.email}</div>
+              <div>Password: {demo.password}</div>
+            </div>
+          </div>
+        </form>
+
+        <button type="button" onClick={() => setActivePage("home")} style={{ display: "block", margin: "20px auto 0", background: "none", border: "none", cursor: "pointer", fontFamily: "'Raleway', sans-serif", fontSize: "0.75rem", fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: COLORS.charcoalLight }}>
+          ← Back to Home
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
 // APP ROOT
 // ============================================================
 export default function App() {
   const [activePage, setActivePage] = useState("home");
   const [lang, setLang] = useState("en");
+  const [session, setSession] = useState(() => getSession());
+  const [loginRole, setLoginRole] = useState("customer");
+
+  const navigate = (page) => {
+    const required = pageRequiresRole(page);
+    if (required && (!session || session.role !== required)) {
+      setLoginRole(required);
+      setActivePage("login");
+      return;
+    }
+    setActivePage(page);
+  };
+
+  const handleLogin = (newSession) => {
+    setSession(newSession);
+  };
+
+  const openLogin = (role = "customer") => {
+    setLoginRole(role);
+    setActivePage("login");
+  };
+
+  const handleLogout = () => {
+    clearSession();
+    setSession(null);
+    if (activePage === "dashboard" || activePage === "admin") {
+      setActivePage("home");
+    }
+  };
 
   // Scroll to top on page change
   useEffect(() => { window.scrollTo({ top: 0, behavior: "smooth" }); }, [activePage]);
@@ -1720,8 +1914,39 @@ export default function App() {
       case "booking": return <BookingPage />;
       case "measurements": return <MeasurementForm />;
       case "tracking": return <OrderTracking />;
-      case "dashboard": return <CustomerDashboard setActivePage={setActivePage} />;
-      case "admin": return <AdminDashboard />;
+      case "login":
+        return (
+          <LoginPage
+            loginRole={loginRole}
+            setLoginRole={setLoginRole}
+            onLogin={handleLogin}
+            setActivePage={setActivePage}
+          />
+        );
+      case "dashboard":
+        if (session?.role !== "customer") {
+          return (
+            <LoginPage
+              loginRole="customer"
+              setLoginRole={setLoginRole}
+              onLogin={handleLogin}
+              setActivePage={setActivePage}
+            />
+          );
+        }
+        return <CustomerDashboard setActivePage={setActivePage} user={session} />;
+      case "admin":
+        if (session?.role !== "admin") {
+          return (
+            <LoginPage
+              loginRole="admin"
+              setLoginRole={setLoginRole}
+              onLogin={handleLogin}
+              setActivePage={setActivePage}
+            />
+          );
+        }
+        return <AdminDashboard user={session} onLogout={handleLogout} />;
       case "faq": return <FAQSection />;
       default: return <HomePage setActivePage={setActivePage} />;
     }
@@ -1730,9 +1955,17 @@ export default function App() {
   return (
     <>
       <style>{globalStyles}</style>
-      <Navbar activePage={activePage} setActivePage={setActivePage} lang={lang} setLang={setLang} />
+      <Navbar
+        activePage={activePage}
+        setActivePage={navigate}
+        lang={lang}
+        setLang={setLang}
+        session={session}
+        onLogout={handleLogout}
+        openLogin={openLogin}
+      />
       <main>{renderPage()}</main>
-      {!["admin"].includes(activePage) && <Footer setActivePage={setActivePage} />}
+      {!["admin", "login"].includes(activePage) && <Footer setActivePage={navigate} />}
       <WhatsAppFloat />
     </>
   );
