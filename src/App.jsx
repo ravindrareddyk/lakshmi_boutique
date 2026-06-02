@@ -188,6 +188,7 @@ const globalStyles = `
 
   @media (max-width: 768px) {
     .hide-mobile { display: none !important; }
+    .hide-desktop { display: block !important; }
   }
 `;
 
@@ -252,6 +253,9 @@ function Navbar({ activePage, setActivePage, lang, setLang }) {
     { id: "contact", label: t.contact },
   ];
 
+  // Determine icon color so hamburger is visible on dark hero/about backgrounds
+  const iconColor = scrolled ? COLORS.charcoal : (["home", "about"].includes(activePage) ? "white" : COLORS.charcoal);
+
   return (
     <nav style={{
       position: "fixed", top: 0, left: 0, right: 0, zIndex: 1000,
@@ -303,9 +307,9 @@ function Navbar({ activePage, setActivePage, lang, setLang }) {
         </div>
 
         {/* Mobile hamburger */}
-        <button onClick={() => setMobileOpen(!mobileOpen)} style={{ display: "none", background: "none", border: "none", cursor: "pointer" }}
+        <button onClick={() => setMobileOpen(!mobileOpen)} style={{ background: "none", border: "none", cursor: "pointer" }}
           className="hide-desktop" id="mob-menu-btn">
-          <Icon name={mobileOpen ? "x" : "menu"} size={22} color={COLORS.charcoal} />
+          <Icon name={mobileOpen ? "x" : "menu"} size={22} color={iconColor} />
         </button>
       </div>
 
