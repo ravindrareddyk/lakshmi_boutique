@@ -186,9 +186,14 @@ const globalStyles = `
     padding: 4px 12px;
   }
 
+  /* hide by default on larger screens */
+  .hide-desktop { display: none !important; }
+
   @media (max-width: 768px) {
     .hide-mobile { display: none !important; }
     .hide-desktop { display: block !important; }
+    /* mobile-friendly hamburger button */
+    #mob-menu-btn { display: inline-flex !important; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 10px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); }
   }
 `;
 
